@@ -25,6 +25,7 @@ public class Shooting : MonoBehaviour {
 	private float minSpeed = 2f;
 	private float speed;
 	private Vector2 direction;
+	private Vector3 worldMousePos;
 
 	//Mana Variables
 	private PlayerMana playerMana;
@@ -47,8 +48,17 @@ public class Shooting : MonoBehaviour {
 	private float baseDamage = 5f;
 	[SerializeField]
 	private int maxDamage = 15;
+	[SerializeField]
+	private float distFromPlayer;
+
+	//Sound
+	public AudioClip shootSound;
+	private AudioSource source;
+	private float volLowRange = 0.5f;
+	private float volHighRange = 1f;
 
 	private void Awake(){
+		source = GetComponent<AudioSource> ();
 		playerMana = GetComponent<PlayerMana> ();
 	}
 
@@ -75,9 +85,12 @@ public class Shooting : MonoBehaviour {
 				if(manaCost <= maxManaCost)
 					manaCost += (chargeRate * Time.deltaTime);
 			}
-			if(speed > minSpeed)
+			if (speed > minSpeed) {
+				//Charge Shot
 				speed -= chargeRate * Time.deltaTime * 0.5f;
-
+				//Arrowshot
+				//speed += chargeRate * Time.deltaTime * 0.5f;
+			}
 			Debug.Log ("speed: " + speed);
 		}
 		if (Input.GetMouseButtonUp (0)) {
@@ -99,12 +112,20 @@ public class Shooting : MonoBehaviour {
 
 		//Instantiate bullet locally
 		if(isFire){
-			GameObject bullet = (GameObject)Instantiate (bulletPrefab, transform.position/* + (Vector3)(direction)*/, Quaternion.identity);
 
+			float vol = Random.Range (volLowRange, volHighRange);
+			source.PlayOneShot (shootSound, vol);
+
+			GameObject bullet = (GameObject)Instantiate (bulletPrefab, transform.position + (Vector3)(direction*distFromPlayer), Quaternion.identity);
+			bullet.transform.LookAt (worldMousePos);
 			//add velocity to bullet
 			bullet.GetComponent<Rigidbody2D> ().velocity = direction * speed;
+			Physics2D.IgnoreCollision(bullet.GetComponent<Collider2D>(), this.gameObject.GetComponent<Collider2D>());
+			//change size depending on charge
 			bullet.transform.localScale *= chargeDamage*.3f;
+			//sed damage to enemy
 			bullet.gameObject.SendMessage ("damageAmount", (int)chargeDamage);
+			//reset charge to zero
 			chargeDamage = baseDamage;
 			isCharging = false;
 			isFire = false;
@@ -125,7 +146,7 @@ public class Shooting : MonoBehaviour {
 	private void GetMouseDirection ()
 	{
 		//where the mouse is pointing
-		Vector3 worldMousePos = Camera.main.ScreenToWorldPoint (Input.mousePosition);
+		worldMousePos = Camera.main.ScreenToWorldPoint (Input.mousePosition);
 
 		//direction from player to mouse
 		direction = (Vector2)(worldMousePos - transform.position);

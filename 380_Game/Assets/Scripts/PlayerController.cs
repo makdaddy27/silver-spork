@@ -15,9 +15,24 @@ public class PlayerController : PhysicsObject {
 	private Vector2 direction;
 	private Vector2 move;
 
+	//Sound
+	public AudioClip walkSound;
+	public AudioClip jumpSound;
+	public AudioClip landSound;
+	private AudioSource source;
+	private float volLowRange = .01f;
+	private float volHighRange = .1f;
+	[SerializeField]
+	private float repeatRate = .2f;
+
 	void Awake(){
 		spriteRenderer = GetComponent<SpriteRenderer> ();
 		animator = GetComponent<Animator> ();
+		source = GetComponent<AudioSource> ();
+	}
+
+	void Start(){
+		StartCoroutine (WalkSound ());
 	}
 	
 	protected override void ComputeVelocity(){
@@ -26,6 +41,7 @@ public class PlayerController : PhysicsObject {
 		move.x = Input.GetAxis ("Horizontal");
 
 		if (Input.GetButtonDown ("Jump") && grounded) {
+			source.PlayOneShot (jumpSound);
 			velocity.y = jumpTakeOffSpeed;
 		}
 		else if(Input.GetButtonUp("Jump")){
@@ -46,9 +62,23 @@ public class PlayerController : PhysicsObject {
 		targetVelocity = move * maxspeed;
 	}
 
+	IEnumerator WalkSound(){
+		while (true) {
+			if (move.x != 0 && grounded) {
+				float vol = Random.Range (volLowRange, volHighRange);
+				source.PlayOneShot (walkSound, vol);
+				yield return new WaitForSeconds (.2f);
+			}else
+				yield return null;
+		}
+	}
+
 	private void KnockBack(float jump){
 		velocity.y = jump;
-		move.x = velocity.x*-100;
+		for (int i = 0; i < 5; i++) {
+			move.x = velocity.x*-100;	
+		}
+
 	}
 
 	private void GetMouseDirection ()
@@ -60,6 +90,13 @@ public class PlayerController : PhysicsObject {
 		direction = (Vector2)(worldMousePos - transform.position);
 		direction.Normalize ();
 
+	}
+
+	void OnCollisionEnter2D(Collision2D other){
+		if (other.gameObject.tag == "Floor") {
+			float vol = Random.Range (volLowRange, volHighRange);
+			source.PlayOneShot (landSound, 5);
+		}
 	}
 
 }
